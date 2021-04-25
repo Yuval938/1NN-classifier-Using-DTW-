@@ -76,6 +76,7 @@ def test(filesPath, trainingDataSet):
             filePath = os.path.join(filesPath, filename)
             y, sr = librosa.load(filePath, sr=None)
             mfcc = librosa.feature.mfcc(y=y, sr=sr)
+            mfcc = librosa.util.normalize(mfcc, 1)
             euclidian_choice = num_to_label[minEuclidianDistance(mfcc, trainingDataSet)[1]]
             dtw_Choice = num_to_label[DTW(mfcc, trainingDataSet)[1]]
             results.append(f"{filename} - {euclidian_choice} - {dtw_Choice}")
@@ -94,6 +95,7 @@ def loadTrainingDataSet(directory):
                     filePath = os.path.join(inner_directory, filename)
                     y, sr = librosa.load(filePath, sr=None)
                     mfcc = librosa.feature.mfcc(y=y, sr=sr)
+                    mfcc = librosa.util.normalize(mfcc,1)
                     trainingDataSet.append([mfcc, label_to_num[dir]])
 
         else:
