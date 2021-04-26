@@ -125,10 +125,13 @@ def loadTrainingDataSet(directory):
                     filePath = os.path.join(inner_directory, filename)
                     y, sr = librosa.load(filePath, sr=None)
                     mfcc = librosa.feature.mfcc(y=y, sr=sr)
-                    for i in range(20):
-                        row = mfcc[i, :]
-                        mfcc[i, :] = stats.zscore(row)
-                    # mfcc = librosa.util.normalize(mfcc, 1000)
+                    # for i in range(20):
+                    #     row = mfcc[i, :]
+                    #     # Zscore
+                    #     #mfcc[i, :] = stats.zscore(row)
+                    #     # min_max
+                    #     mfcc[i, :] = (row - row.min()) / (row.max() - row.min())
+                    mfcc = librosa.util.normalize(mfcc, 2)
                     trainingDataSet.append([mfcc, label_to_num[dir]])
 
         else:
@@ -146,10 +149,13 @@ def loadLabeledDataSet(directory):
                     filePath = os.path.join(inner_directory, filename)
                     y, sr = librosa.load(filePath, sr=None)
                     mfcc = librosa.feature.mfcc(y=y, sr=sr)
-                    for i in range(20):
-                        row = mfcc[i, :]
-                        mfcc[i, :] = stats.zscore(row)
-                    # mfcc = librosa.util.normalize(mfcc, 1000)
+                    # for i in range(20):
+                    #     row = mfcc[i, :]
+                    #     # Zscore
+                    #     #mfcc[i, :] = stats.zscore(row)
+                    #     # min_max
+                    #     mfcc[i, :] = (row - row.min()) / (row.max() - row.min())
+                    mfcc = librosa.util.normalize(mfcc, 2)
                     labeledDataSet.append([mfcc, label_to_num[dir]])
 
         else:
