@@ -13,19 +13,12 @@ label_to_num = {"dog": 0, 'down': 1, 'yes': 2, "on": 3, "off": 4}
 
 def findEuclideanDistance(data, mfcc):
     dst = 0
-    for i in range(19):
+    for i in range(101):
         vector1 = data[0][:, i]
         vector2 = mfcc[:, i]
         dst += np.linalg.norm(vector1 - vector2)
         # dst += distance.euclidean(vector1, vector2)
-    return dst
-
-
-def nolizeZscore(mat):
-    for i, in mat:
-        row = mat[i, :]
-        mat[i, :] = stats.zscore(row)
-    return mat
+    return dst/101
 
 
 def minEuclidianDistance(mfcc, trainingDataSet):
@@ -41,10 +34,10 @@ def minEuclidianDistance(mfcc, trainingDataSet):
 
 
 def buildDtwMat(distMat):
-    DtwMat = np.zeros([32, 32], np.float32)
+    DtwMat = np.zeros([101, 101], np.float32)
     DtwMat[0, 0] = distMat[0, 0]
-    for i in range(32):
-        for j in range(32):
+    for i in range(101):
+        for j in range(101):
             if i == 0 and j == 0:
                 DtwMat[i, j] = distMat[i, j]
             elif i > 0 and j > 0:
@@ -56,8 +49,8 @@ def buildDtwMat(distMat):
     return DtwMat
 
 
-def makeEuclidianMatrix(mfcc, data):
-    distMat = np.zeros([32, 32], np.float32)
+def makeEuclideanMatrix(mfcc, data):
+    distMat = np.zeros([101, 101], np.float32)
     for i, vector1 in enumerate(data[0].T, 0):
         for j, vector2 in enumerate(mfcc.T, 0):
             distMat[i, j] = distance.euclidean(vector1, vector2)
@@ -68,10 +61,10 @@ def DTW(mfcc, trainingDataSet):
     min = 999999999999999999999999999999999
     for data in trainingDataSet:
         # first we will make distance matrix:
-        distMat = makeEuclidianMatrix(mfcc, data)
+        distMat = makeEuclideanMatrix(mfcc, data)
         DwtMat = buildDtwMat(distMat)
-        if DwtMat[31, 31] < min:
-            min = DwtMat[31, 31]
+        if DwtMat[100, 100] < min:
+            min = DwtMat[100, 100]
             choice = data
     return choice
 
@@ -83,12 +76,13 @@ def test(filesPath, trainingDataSet):
             # load the file
             filePath = os.path.join(filesPath, filename)
             y, sr = librosa.load(filePath, sr=None)
-            mfcc = librosa.feature.mfcc(y=y, sr=sr)
+            mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, n_fft=1024, hop_length=int(sr * 0.01))
+            mfcc_d = librosa.feature.delta(mfcc)
+            mfcc = np.concatenate([mfcc, mfcc_d])
             # normalize each feature
-            for i in range(20):
+            for i in range(26):
                 row = mfcc[i, :]
                 mfcc[i, :] = stats.zscore(row)
-            # mfcc = librosa.util.normalize(mfcc, 1)
             euclidian_choice = num_to_label[minEuclidianDistance(mfcc, trainingDataSet)[1]]
             dtw_Choice = num_to_label[DTW(mfcc, trainingDataSet)[1]]
             results.append(f"{filename} - {euclidian_choice} - {dtw_Choice}")
@@ -97,22 +91,21 @@ def test(filesPath, trainingDataSet):
 
 
 def validate(labeled, trainingDataSet):
-    results = []
-    DTWCOUNT = 0
-    ECCOUNT = 0
+    DTW_correct_Count = 0
+    Euclidean_correct_Count = 0
     size_of_label = len(labeled)
     for label in labeled:
         mfcc = label[0]
-        euclidian_choice = num_to_label[minEuclidianDistance(mfcc, trainingDataSet)[1]]
+        euclidean_choice = num_to_label[minEuclidianDistance(mfcc, trainingDataSet)[1]]
         dtw_Choice = num_to_label[DTW(mfcc, trainingDataSet)[1]]
         if dtw_Choice == num_to_label[label[1]]:
-            DTWCOUNT += 1
-        if euclidian_choice == num_to_label[label[1]]:
-            ECCOUNT += 1
-    resultdtw = DTWCOUNT / size_of_label
-    resultec = ECCOUNT / size_of_label
-    print(f"out of {size_of_label}, {resultdtw} are currecnt for dtw")
-    print(f"out of {size_of_label}, {resultec} are currecnt for ec")
+            DTW_correct_Count += 1
+        if euclidean_choice == num_to_label[label[1]]:
+            Euclidean_correct_Count += 1
+    result_dtw = DTW_correct_Count / size_of_label
+    result_euclidean = Euclidean_correct_Count / size_of_label
+    print(f"DTW success rate: {result_dtw} ")
+    print(f"Euclidean success rate: {result_euclidean}")
 
 
 def loadTrainingDataSet(directory):
@@ -124,14 +117,13 @@ def loadTrainingDataSet(directory):
                 if filename.endswith(".wav"):
                     filePath = os.path.join(inner_directory, filename)
                     y, sr = librosa.load(filePath, sr=None)
-                    mfcc = librosa.feature.mfcc(y=y, sr=sr)
-                    # for i in range(20):
-                    #     row = mfcc[i, :]
-                    #     # Zscore
-                    #     #mfcc[i, :] = stats.zscore(row)
-                    #     # min_max
-                    #     mfcc[i, :] = (row - row.min()) / (row.max() - row.min())
-                    mfcc = librosa.util.normalize(mfcc, 2)
+                    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, n_fft=1024, hop_length=int(sr * 0.01))
+                    mfcc_d = librosa.feature.delta(mfcc)
+                    mfcc = np.concatenate([mfcc, mfcc_d])
+                    for i in range(26):
+                        # Zscore
+                        row = mfcc[i, :]
+                        mfcc[i, :] = stats.zscore(row)
                     trainingDataSet.append([mfcc, label_to_num[dir]])
 
         else:
@@ -148,14 +140,13 @@ def loadLabeledDataSet(directory):
                 if filename.endswith(".wav"):
                     filePath = os.path.join(inner_directory, filename)
                     y, sr = librosa.load(filePath, sr=None)
-                    mfcc = librosa.feature.mfcc(y=y, sr=sr)
-                    # for i in range(20):
-                    #     row = mfcc[i, :]
-                    #     # Zscore
-                    #     #mfcc[i, :] = stats.zscore(row)
-                    #     # min_max
-                    #     mfcc[i, :] = (row - row.min()) / (row.max() - row.min())
-                    mfcc = librosa.util.normalize(mfcc, 2)
+                    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, n_fft=1024, hop_length=int(sr * 0.01))
+                    mfcc_d = librosa.feature.delta(mfcc)
+                    mfcc = np.concatenate([mfcc, mfcc_d])
+                    # Zscore normalization
+                    for i in range(26):
+                        row = mfcc[i, :]
+                        mfcc[i, :] = stats.zscore(row)
                     labeledDataSet.append([mfcc, label_to_num[dir]])
 
         else:
@@ -167,7 +158,7 @@ if __name__ == '__main__':
     directory = r'./train_data/'
     trainingDataSet = loadTrainingDataSet(directory)
     labeledDataSet = loadLabeledDataSet('./labeled/')
-    # test('./test_files/', trainingDataSet)
+    test('./test_files/', trainingDataSet)
     validate(labeledDataSet, trainingDataSet)
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
